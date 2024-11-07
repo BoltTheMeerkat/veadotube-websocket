@@ -1,0 +1,415 @@
+[extension_name]
+Veadotube WebSocket
+[extension_info]
+An extension to connect SAMMI to Veadotube Mini/Live
+[extension_version]
+0.1.0
+
+
+
+[insert_external]
+<div>
+    <h1>Veadotube WebSocket for SAMMI</h1>
+    <h3>A Veadotube websocket connection extension for SAMMI Bridge by Bolt (@BoltTheMeerkat)</h3>
+    <p>This extension should auto-configure and require no user intervention. Check the logs if it fails to start, and contact the author if there's a non-user issue.</p>
+    <p>If you need to rescan/reconnect Veadotube instances, the current design of Veadotube Websocket for SAMMI requires you to do so from within SAMMI.</p>
+</div>
+
+
+
+[insert_command]
+// Disconnect current instances and creates a new set of webhooks
+SAMMI.extCommand(
+    'Veadotube: Rescan for Instances',
+    3355443,
+    52,
+    {
+        detailsLabel: ['Disconnect all current Veadotube instances, then rescans for and connects to found Veadotube instances.', 30]
+    }
+);
+// Attempt to reconnect all disconnected Veadotube instances
+SAMMI.extCommand(
+    'Veadotube: Reconnect Instances',
+    3355443,
+    52,
+    {
+        detailsLabel: ['Disconnects and then reconnects to the current list of Veadotube instances. Please use "Rescan for Instances" if you have restarted an instance.', 30]
+    }
+);
+// Set the state of the given Veadotube instance
+SAMMI.extCommand(
+    'Veadotube: Set State',
+    3355443,
+    52,
+    {
+        instanceType: ['Instance Type', 19, 'mini', 0.25, ['mini', 'live']],
+        windowTitle: ['Window Title', 14, 'model', 1.375],
+        stateName: ['State Name', 14, 'default', 1.375]
+    }
+);
+// Get the state of the given Veadotube instance
+SAMMI.extCommand(
+    'Veadotube: Get State',
+    3355443,
+    52,
+    {
+        instanceType: ['Instance Type', 19, 'mini', 0.25, ['mini', 'live']],
+        windowTitle: ['Window Title', 14, 'model', 1.375],
+        objectName: ['Object Name', 14, '', 1.375]
+    }
+);
+
+// Setup command listeners after the extension has loaded commands
+vwCommandListener();
+// Connect to Veadotube Instances
+vwMain();
+
+
+
+[insert_hook]
+// Hooks are outdated, section required for SAMMI Bridge extension initialisation reasons
+
+
+
+[insert_script]
+// Global Variables
+// We don't like them, but we don't want to lose our websocket objects or have to get data from SAMMI twice!
+const globalVars = {
+    veadotubeInstances: []
+};
+
+// Gets the type of operating system
+function vwGetOS()
+{
+    const userAgent = window.navigator.userAgent,
+        platform = window.navigator?.userAgentData?.platform || window.navigator.platform,
+        macosPlatforms = ['macOS', 'Macintosh', 'MacIntel', 'MacPPC', 'Mac68K'],
+        windowsPlatforms = ['Win32', 'Win64', 'Windows', 'WinCE']
+    let os = null;
+
+    if (macosPlatforms.indexOf(platform) !== -1) {
+    os = 'Mac';
+    } else if (windowsPlatforms.indexOf(platform) !== -1) {
+    os = 'Windows';
+    } else if (/Linux/.test(platform)) {
+    os = 'Linux';
+    }
+
+    return os;
+}
+
+// Returns an array of all Veadotube states formatted for a SAMMI button list
+function vwGetVeadotubeStatesForButtonList()
+{
+    var buttonList = [];
+
+    if(globalVars.veadotubeInstances.length = 0)
+    {
+        return buttonList = setTimeout(vwGetVeadotubeStatesForButtonList(), 1000);
+    }
+    else
+    {
+        globalVars.veadotubeInstances.forEach(instance => {
+            instance["states"].forEach(state => {
+                buttonList.push(state["name"]);
+            });
+        });
+
+        return buttonList;
+    }
+}
+
+// Gets the usable states from a Veadotube instance
+function vwGetVeadotubeStates(veadotubeInstance)
+{
+    const msg = {
+        event: 'payload',
+        type: 'stateEvents',
+        id: veadotubeInstance["id"].split('-')[0],
+        payload: {
+            event: "list"
+        }
+    };
+
+    veadotubeInstance["websocket"].send('nodes:' + JSON.stringify(msg));
+}
+
+// Gets the current state of the specified Veatube instance
+function vwGetVeadotubeCurrentState(veadotubeInstance)
+{
+    const msg = {
+        event: 'payload',
+        type: 'stateEvents',
+        id: veadotubeInstance["id"].split('-')[0],
+        payload: {
+            event: "peek"
+        }
+    };
+
+    veadotubeInstance["websocket"].send('nodes:' + JSON.stringify(msg));
+}
+
+// Sets the state of a given Veadotube instance
+function vwSetVeadotubeState(veadotubeInstance, stateName)
+{
+    const msg = {
+        event: 'payload',
+        type: 'stateEvents',
+        id: veadotubeInstance["id"].split('-')[0],
+        payload: {
+            event: "set",
+            state: veadotubeInstance["states"][vwMatchNameToState(stateName, veadotubeInstance)]["id"]
+        }
+    };
+
+    veadotubeInstance["websocket"].send('nodes:' + JSON.stringify(msg));
+}
+
+// Matches a given URL to an instance's websocket URL
+function vwMatchURLToInstance(websocketUrl)
+{
+    var count = 0;
+    while(websocketUrl != globalVars.veadotubeInstances[count]["websocket"]["url"])
+    {
+        count++;
+    }
+    return count;
+}
+
+// Matches a given name to an instance's name
+function vwMatchNameToInstance(instanceName)
+{
+    var count = 0;
+    while(instanceName != globalVars.veadotubeInstances[count]["name"])
+    {
+        count++;
+    }
+    return count;
+}
+
+// Matches a given name to the state of an instance
+function vwMatchNameToState(stateName, veadotubeInstance)
+{
+    var count = 0;
+    while(stateName != veadotubeInstance.states[count]["name"])
+    {
+        count++;
+    }
+    return count;
+}
+
+function vwMatchIdToState(stateId, veadotubeInstance)
+{
+    var count = 0;
+    while(stateId != veadotubeInstance.states[count]["id"])
+    {
+        count++;
+    }
+    return count;
+}
+
+// Main functon
+// Kicks-off initial setup
+function vwMain()
+{
+    console.log("Veadotube Webhook: Starting...");
+    vwFindVeadotubeInstances();
+}
+
+// Finds and connects to any currently running Veadotube instances
+// Returns an array of veadotubeInstance objects
+function vwFindVeadotubeInstances()
+{
+    // Find the currently running instances of Veadotube
+    // SAMMI needs to do most of the heavy lifting here since we can't directly access the file system from SAMMI Bridge
+    console.log("Veadotube Webhook: Finding instances...")
+
+    console.log("Veadotube Webhook: Detecting OS for instance filepath...")
+    switch(vwGetOS())
+    {
+        case 'Windows':
+            console.log("Veadotube Webhook: OS: Windows");
+            console.log("Veadotube Webhook: Triggering SAMMI to find instances...");
+            SAMMI.triggerExt('GetInstances', {user_os: "Windows"})
+            break;
+
+        // TODO: Find out if this actually works, as I don't have a device to test it on
+        case 'Mac', 'Linux':
+            console.log("Veadotube Webhook: OS: Unix");
+            console.log("Veadotube Webhook: Triggering SAMMI to find instances...");
+            SAMMI.triggerExt('GetInstances', {user_os: "Unix"});
+            break;
+    }
+    // SAMMI automatically executes the next part as we have no idea how long it will take SAMMI to find the instances
+}
+
+function vwConnectVeadotubeInstances()
+{
+    console.log("Veadotube Webhook: Checking if instances were found...");
+
+    // Get the Veadotube instances array from SAMMI
+    SAMMI.getVariable('instances', 'GetVeadotubeInstances').then(response => {
+        globalVars.veadotubeInstances = JSON.parse(JSON.stringify(response["value"]));
+        if(globalVars.veadotubeInstances.length > 0)
+        {
+            console.log("Veadotube Webhook: Instances found!");
+            // Connect to the instances of Veadotube
+            for(ii = 0; ii < globalVars.veadotubeInstances.length; ii++)
+            {
+                console.log("Veadotube Webhook: Connecting to instance: " + globalVars.veadotubeInstances[ii]["name"]);
+                console.log("Veadotube Webhook: Instance address: " + globalVars.veadotubeInstances[ii]["server"]);
+                console.log("Veadotube Webhook: Attempting connection...");
+                globalVars.veadotubeInstances[ii]["websocket"] = new WebSocket("ws://" + globalVars.veadotubeInstances[ii]["server"] + "?n=" + globalVars.veadotubeInstances[ii]["name"]);
+                console.log(globalVars.veadotubeInstances[ii]["websocket"]);
+
+                // Add listeners for the websocket
+                globalVars.veadotubeInstances[ii]["websocket"].onopen = function(message)
+                {
+                    // Find which instance the message corresponds to
+                    var jj = vwMatchURLToInstance(message.target["url"]);
+                    console.log("Veadotube Webhook: Connection opened at " + globalVars.veadotubeInstances[jj]["server"]);
+                    // Get the states added to SAMMI
+                    vwGetVeadotubeStates(globalVars.veadotubeInstances[jj]);
+                    vwGetVeadotubeCurrentState(globalVars.veadotubeInstances[jj]);
+                }
+                globalVars.veadotubeInstances[ii]["websocket"].onmessage = function (message)
+                {
+                    // Veadotube websocket response is not JSON-friendly
+                    // To parse it, we must remove the raw text at the front ("node:"), and the multiple trailing unicode characters (\u0000)
+                    const data = JSON.parse(message.data.substring(6).replace(/\u0000/g, ''));
+                    // Unecessarily separate out the payload, which contains the data we want
+                    const payload = data.payload;
+
+                    // Find which instance the message corresponds to
+                    var jj = vwMatchURLToInstance(message.target["url"]);
+
+                    // Switch on type and event
+                    switch(data.type)
+                    {
+                        case "stateEvents":
+                            switch(payload.event)
+                            {
+                                case "list":
+                                    // Replace the existing states array in the global instances array and SAMMI
+                                    globalVars.veadotubeInstances[jj]["states"] = payload.states;
+                                    SAMMI.setVariable(`instances[${jj}].states`, globalVars.veadotubeInstances[jj]["states"], 'GetVeadotubeInstances');
+                                    break;
+
+                                case "peek":
+                                    // Construct the object to be stored in "current_state"
+                                    currentState = {
+                                        id: payload.state,
+                                        name: globalVars.veadotubeInstances[jj]["states"][vwMatchIdToState(payload.state, globalVars.veadotubeInstances[jj])]["name"]
+                                    };
+                                    // Replace the existing current state object in the global instances array and SAMMI
+                                    globalVars.veadotubeInstances[jj]["current_state"] = currentState;
+                                    SAMMI.setVariable(`instances[${jj}].current_state`, globalVars.veadotubeInstances[jj]["current_state"], 'GetVeadotubeInstances');
+                                    break;
+
+                                case "set":
+                                    // Update the current state
+                                    // Done in this way to make sure the variable in SAMMI doesn't become desynced with the instance it's referencing
+                                    vwGetVeadotubeCurrentState();
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            console.log("Veadotube Webhook: SAMMI returned no instances. Making another attempt in 5 seconds...");
+            setTimeout(vwConnectVeadotubeInstances, 5000);
+        }
+    });
+}
+
+// Disconnects all Veadotube instances
+function vwDisconnectVeadotubeInstances()
+{
+    console.log("Veadotube Webhook: Disconnecting all Veadotube instances...")
+    for(ii = 0; ii < globalVars.veadotubeInstances.length; ii++)
+    {
+        console.log("Veadotube Webhook: Disonnecting from instance: " + globalVars.veadotubeInstances[ii]["name"]);
+        console.log("Veadotube Webhook: Instance address: " + globalVars.veadotubeInstances[ii]["server"]);
+        // Check if the buffer is empty, and if not, give it a chance to empty
+        if(globalVars.veadotubeInstances[ii]["websocket"].bufferedAmount != 0)
+        {
+            for(ii = 0; ii < 5; ii++)
+            {
+                if(ii === 4)
+                {
+                    console.log("Veadotube Webhook: There is still data in the buffer. The instance will be disconnected, but this may break something!");
+                }
+                else if(globalVars.veadotubeInstances[ii]["websocket"].bufferedAmount != 0)
+                {
+                    console.log("Veadotube Webhook: Waiting for the buffer to empty...")
+                }
+                else
+                {
+                    ii = 6;
+                }
+            }
+        }
+        globalVars.veadotubeInstances[ii]["websocket"].close();
+        console.log("Veadotube Webhook: Connection to instance closed!");
+    }
+    console.log("Veadotube Webhook: All Veadotube instance websockets closed!");
+}
+
+// If a 
+function vwDisconnectRecurse(veadotubeInstanceWebsocket)
+{
+
+}
+
+// Performs setup of SAMMI command listeners
+function vwCommandListener()
+{
+    console.log("Veadotube Webhook: Setting up the SAMMI command listeners...");
+
+    sammiclient.on('Veadotube: Rescan for Instances', () => {
+        console.log("Veadotube Webhook: Rescan for Instances triggered.");
+        vwDisconnectVeadotubeInstances();
+        vwFindVeadotubeInstances();
+    });
+
+    sammiclient.on('Veadotube: Reconnect Instances', () => {
+        console.log("Veadotube Webhook: Reconnect Instances triggered.");
+        vwDisconnectVeadotubeInstances();
+        vwConnectVeadotubeInstances();
+    });
+
+    sammiclient.on('Veadotube: Set State', (payload) => {
+        console.log("Veadotube Webhook: Set State triggered. Payload: ", payload);
+        var veadotubeInstance = globalVars.veadotubeInstances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
+        // Check if the current state is the same as what is trying to be set
+        if(veadotubeInstance["current_state"] != vwMatchNameToState(payload.Data.stateName, veadotubeInstance))
+        {
+            vwSetVeadotubeState(veadotubeInstance, payload.Data.stateName);
+        }
+        else
+        {
+            console.log("Veadotube Webhook: Set State ignored, current state is already " + payload.Data.stateName);
+        }
+    });
+
+    sammiclient.on('Veadotube: Get Sate', (payload) => {
+        console.log("Veadotube Webhook: Get State triggered. Payload: ", payload);
+        var veadotubeInstance = globalVars.veadotubeInstances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
+        // Return the current state of the given Veadotube instance to the variable the user provided
+        SAMMI.setVariable(payload.Data.objectName)
+    });
+
+    console.log("Veadotube Webhook: Done!");
+}
+
+
+
+[insert_over]
+{
+    "sammi_version": "2024.3.1",
+    "bridge_version": "7.30",
+    "bridge": true
+    // TODO: Clean up deck and add deck data here (right click on Deck Thumbnail -> Copy Deck)
+}
