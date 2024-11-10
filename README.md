@@ -1,2 +1,2 @@
 # veadotube-websocket
- An extension to connect SAMMI to Veadotube Mini/Live
+ A Veadotube websocket client for SAMMI
