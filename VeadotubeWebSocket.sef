@@ -98,27 +98,6 @@ function vwGetOS()
     return os;
 }
 
-// Returns an array of all Veadotube states formatted for a SAMMI button list
-function vwGetVeadotubeStatesForButtonList()
-{
-    var buttonList = [];
-
-    if(globalVars.veadotubeInstances.length = 0)
-    {
-        return buttonList = setTimeout(vwGetVeadotubeStatesForButtonList(), 1000);
-    }
-    else
-    {
-        globalVars.veadotubeInstances.forEach(instance => {
-            instance["states"].forEach(state => {
-                buttonList.push(state["name"]);
-            });
-        });
-
-        return buttonList;
-    }
-}
-
 // Gets the usable states from a Veadotube instance
 function vwGetVeadotubeStates(veadotubeInstance)
 {
