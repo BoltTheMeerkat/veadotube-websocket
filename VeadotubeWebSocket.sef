@@ -98,47 +98,14 @@ function vwGetOS()
     return os;
 }
 
-// Gets the usable states from a Veadotube instance
-function vwGetVeadotubeStates(veadotubeInstance)
+// Sends a Veadotube instance the given payload
+function vwSendMessage(veadotubeInstance, nodeType, payloadContent)
 {
     const msg = {
         event: 'payload',
-        type: 'stateEvents',
+        type: nodeType,
         id: veadotubeInstance["id"].split('-')[0],
-        payload: {
-            event: "list"
-        }
-    };
-
-    veadotubeInstance["websocket"].send('nodes:' + JSON.stringify(msg));
-}
-
-// Gets the current state of the specified Veatube instance
-function vwGetVeadotubeCurrentState(veadotubeInstance)
-{
-    const msg = {
-        event: 'payload',
-        type: 'stateEvents',
-        id: veadotubeInstance["id"].split('-')[0],
-        payload: {
-            event: "peek"
-        }
-    };
-
-    veadotubeInstance["websocket"].send('nodes:' + JSON.stringify(msg));
-}
-
-// Sets the state of a given Veadotube instance
-function vwSetVeadotubeState(veadotubeInstance, stateName)
-{
-    const msg = {
-        event: 'payload',
-        type: 'stateEvents',
-        id: veadotubeInstance["id"].split('-')[0],
-        payload: {
-            event: "set",
-            state: veadotubeInstance["states"][vwMatchNameToState(stateName, veadotubeInstance)]["id"]
-        }
+        payload: payloadContent
     };
 
     veadotubeInstance["websocket"].send('nodes:' + JSON.stringify(msg));
@@ -166,7 +133,7 @@ function vwMatchNameToInstance(instanceName)
     return count;
 }
 
-// Matches a given name to the state of an instance
+// Matches a given state name to the state of an instance
 function vwMatchNameToState(stateName, veadotubeInstance)
 {
     var count = 0;
@@ -177,6 +144,7 @@ function vwMatchNameToState(stateName, veadotubeInstance)
     return count;
 }
 
+// Matches a given state ID to the state of an instance
 function vwMatchIdToState(stateId, veadotubeInstance)
 {
     var count = 0;
@@ -248,8 +216,8 @@ function vwConnectVeadotubeInstances()
                     var jj = vwMatchURLToInstance(message.target["url"]);
                     console.log("Veadotube WebSocket: Connection opened at " + globalVars.veadotubeInstances[jj]["server"]);
                     // Get the states added to SAMMI
-                    vwGetVeadotubeStates(globalVars.veadotubeInstances[jj]);
-                    vwGetVeadotubeCurrentState(globalVars.veadotubeInstances[jj]);
+                    vwSendMessage(globalVars.veadotubeInstances[jj], 'stateEvents', {event: "list"});
+                    vwSendMessage(globalVars.veadotubeInstances[jj], 'stateEvents', {event: "peek"});
                 }
                 globalVars.veadotubeInstances[ii]["websocket"].onmessage = function (message)
                 {
@@ -260,7 +228,7 @@ function vwConnectVeadotubeInstances()
                     const payload = data.payload;
 
                     // Find which instance the message corresponds to
-                    var jj = vwMatchURLToInstance(message.target["url"]);
+                    var arrayCount = vwMatchURLToInstance(message.target["url"]);
 
                     // Switch on type and event
                     switch(data.type)
@@ -270,25 +238,25 @@ function vwConnectVeadotubeInstances()
                             {
                                 case "list":
                                     // Replace the existing states array in the global instances array and SAMMI
-                                    globalVars.veadotubeInstances[jj]["states"] = payload.states;
-                                    SAMMI.setVariable(`instances[${jj}].states`, globalVars.veadotubeInstances[jj]["states"], 'GetVeadotubeInstances');
+                                    globalVars.veadotubeInstances[arrayCount]["states"] = payload.states;
+                                    SAMMI.setVariable(`instances[${arrayCount}].states`, globalVars.veadotubeInstances[arrayCount]["states"], 'GetVeadotubeInstances');
                                     break;
 
                                 case "peek":
                                     // Construct the object to be stored in "current_state"
                                     currentState = {
                                         id: payload.state,
-                                        name: globalVars.veadotubeInstances[jj]["states"][vwMatchIdToState(payload.state, globalVars.veadotubeInstances[jj])]["name"]
+                                        name: globalVars.veadotubeInstances[arrayCount]["states"][vwMatchIdToState(payload.state, globalVars.veadotubeInstances[arrayCount])]["name"]
                                     };
                                     // Replace the existing current state object in the global instances array and SAMMI
-                                    globalVars.veadotubeInstances[jj]["current_state"] = currentState;
-                                    SAMMI.setVariable(`instances[${jj}].current_state`, globalVars.veadotubeInstances[jj]["current_state"], 'GetVeadotubeInstances');
+                                    globalVars.veadotubeInstances[arrayCount]["current_state"] = currentState;
+                                    SAMMI.setVariable(`instances[${arrayCount}].current_state`, globalVars.veadotubeInstances[arrayCount]["current_state"], 'GetVeadotubeInstances');
                                     break;
 
                                 case "set":
                                     // Update the current state
                                     // Done in this way to make sure the variable in SAMMI doesn't become desynced with the instance it's referencing
-                                    vwGetVeadotubeCurrentState();
+                                    vwSendMessage(globalVars.veadotubeInstances[arrayCount], 'stateEvents', {event: "peek"});
                             }
                             break;
                     }
@@ -358,7 +326,7 @@ function vwCommandListener()
         // Check if the current state is the same as what is trying to be set
         if(veadotubeInstance["current_state"] != vwMatchNameToState(payload.Data.stateName, veadotubeInstance))
         {
-            vwSetVeadotubeState(veadotubeInstance, payload.Data.stateName);
+            vwSendMessage(veadotubeInstance, 'stateEvents', {event: "set", state: veadotubeInstance["states"][vwMatchNameToState(payload.Data.stateName, veadotubeInstance)]["id"]});
         }
         else
         {
@@ -371,7 +339,7 @@ function vwCommandListener()
         var arrayCount = vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle);
         // While the current state in Veadotube and the value for it stored in SAMMI should never become desync'd, there is always a possibility
         // Getting the current state from Veadotube here should prevent any sort of desync from occurring
-        vwGetVeadotubeCurrentState(globalVars.veadotubeInstances[arrayCount]);
+        vwSendMessage(globalVars.veadotubeInstances[arrayCount], 'stateEvents', {event: "peek"});
         // Return the current state of the given Veadotube instance to the variable the user provided
         SAMMI.getVariable(`instances[${arrayCount}].current_state`, 'GetVeadotubeInstances').then(response => {
             SAMMI.setVariable(payload.Data.objectName, response["value"], payload.Data.FromButton);
