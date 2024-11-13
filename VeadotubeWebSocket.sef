@@ -3,7 +3,7 @@ Veadotube WebSocket
 [extension_info]
 An extension to connect SAMMI to Veadotube Mini/Live
 [extension_version]
-1.1.0
+1.1.1
 
 
 
@@ -219,12 +219,12 @@ function vwConnectVeadotubeInstances()
                     vwSendMessage(globalVars.veadotubeInstances[jj], 'stateEvents', {event: "list"});
                     vwSendMessage(globalVars.veadotubeInstances[jj], 'stateEvents', {event: "peek"});
                 }
-                globalVars.veadotubeInstances[ii]["websocket"].onmessage = function (message)
+                globalVars.veadotubeInstances[ii]["websocket"].onmessage = function(message)
                 {
                     // Veadotube websocket response is not JSON-friendly
-                    // To parse it, we must remove the raw text at the front ("node:"), and the multiple trailing unicode characters (\u0000)
+                    // To parse it, we must remove the raw text at the front ("node:"), and the multiple trailing unicode characters ("\u0000")
                     const data = JSON.parse(message.data.substring(6).replace(/\u0000/g, ''));
-                    // Unecessarily separate out the payload, which contains the data we want
+                    // Unnecessarily separate out the payload, which contains the data we want
                     const payload = data.payload;
 
                     // Find which instance the message corresponds to
@@ -236,12 +236,14 @@ function vwConnectVeadotubeInstances()
                         case "stateEvents":
                             switch(payload.event)
                             {
+                                // A list of states for an instance was returned
                                 case "list":
                                     // Replace the existing states array in the global instances array and SAMMI
                                     globalVars.veadotubeInstances[arrayCount]["states"] = payload.states;
                                     SAMMI.setVariable(`instances[${arrayCount}].states`, globalVars.veadotubeInstances[arrayCount]["states"], 'GetVeadotubeInstances');
                                     break;
 
+                                // The currently selected state for an instance was returned
                                 case "peek":
                                     // Construct the object to be stored in "current_state"
                                     currentState = {
@@ -253,6 +255,7 @@ function vwConnectVeadotubeInstances()
                                     SAMMI.setVariable(`instances[${arrayCount}].current_state`, globalVars.veadotubeInstances[arrayCount]["current_state"], 'GetVeadotubeInstances');
                                     break;
 
+                                // The currently selected state for an instance was set
                                 case "set":
                                     // Update the current state
                                     // Done in this way to make sure the variable in SAMMI doesn't become desynced with the instance it's referencing
