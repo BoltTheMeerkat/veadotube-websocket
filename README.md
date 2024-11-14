@@ -71,7 +71,7 @@ These commands are related to the state of a Veadotube Instance.
 
 ## Installation
 ### Prerequesites
-As this is an extension for SAMMI (https://sammi.solutions/) to add a WebSocket client to Veadotube (https://veado.tube/), you will need to have both installed to use it.
+As this is an extension for SAMMI (https://sammi.solutions/) to add a WebSocket client to Veadotube (https://veado.tube/). You will need to have both installed to use it.
 
 No other prerequsites are required or will be provided.
 
