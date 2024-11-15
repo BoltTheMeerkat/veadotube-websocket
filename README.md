@@ -15,6 +15,7 @@ Veadotube WebSocket is an extension for the SAMMI Bridge, and adds a WebSocket c
 - Supports multiple instances of Veadotube
 
 ### To-Do
+- [x] Lay groundwork for multi-channel support
 - [ ] Add SAMMI commands for the remaining payloads of the "stateEvents" node
     - [ ] push/pop
     - [ ] thumb
