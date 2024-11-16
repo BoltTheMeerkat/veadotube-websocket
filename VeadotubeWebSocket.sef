@@ -187,8 +187,7 @@ function vwMain()
     vwFindVeadotubeInstances();
 }
 
-// Finds and connects to any currently running Veadotube instances
-// Returns an array of veadotubeInstance objects
+// Gets SAMMI to find any currently running Veadotube instances
 function vwFindVeadotubeInstances()
 {
     // Find the currently running instances of Veadotube
@@ -214,6 +213,7 @@ function vwFindVeadotubeInstances()
     // SAMMI automatically executes the next part as we have no idea how long it will take SAMMI to find the instances
 }
 
+// Connects to any Veadotube instances found by SAMMI
 function vwConnectVeadotubeInstances()
 {
     console.log("Veadotube WebSocket: Checking if instances were found...");
