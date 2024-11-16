@@ -324,7 +324,7 @@ function vwDisconnectRecurse(arrayCount)
     {
         console.log("Veadotube WebSocket: There is still data in the buffer of: " + globalVeadotubeWebSocket.instances[arrayCount]["websocket"]["url"]);
         console.log("Veadotube WebSocket: Another disconnect will be attempted in 5 seconds...");
-        setTimeout(vwDisconnectRecurse(arrayCount), 5000);
+        setTimeout(vwDisconnectRecurse, 5000, arrayCount);
     }
     else
     {
