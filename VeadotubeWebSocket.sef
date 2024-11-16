@@ -211,6 +211,8 @@ function vwFindVeadotubeInstances()
         break;
     }
     // SAMMI automatically executes the next part as we have no idea how long it will take SAMMI to find the instances
+    // At one point, an attempt was made to make vwConnectVeadotubeInstances() a recrusive function
+    // It worked fine, except that it caused a new bug in SAMMI, where it would crash getting the extension details for the global extensions variable
 }
 
 // Connects to any Veadotube instances found by SAMMI
