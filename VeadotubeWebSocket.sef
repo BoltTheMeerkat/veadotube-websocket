@@ -60,7 +60,7 @@ SAMMI.extCommand(
 );
 // Get the thumbnail of a state for the given Veadotube instance
 SAMMI.extCommand(
-    'Veadotube: Get Thumbnail',
+    'Veadotube: Get State Thumbnail',
     4467268,
     52,
     {
@@ -413,7 +413,7 @@ function vwCommandListener()
         });
     });
 
-    sammiclient.on('Veadotube: Get Thumbnail', (payload) => {
+    sammiclient.on('Veadotube: Get State Thumbnail', (payload) => {
         console.log("Veadotube WebSocket: Get Thumbnail triggered. Payload: ", payload);
         var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
         vwSendMessage(veadotubeInstance, 'nodes', 'stateEvents', {event: 'thumb', state: veadotubeInstance["states"][vwMatchNameToState(payload.Data.stateName, veadotubeInstance)]["id"]});
