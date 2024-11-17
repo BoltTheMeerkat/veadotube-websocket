@@ -88,7 +88,7 @@ No other prerequsites are required or will be provided.
 <img src="images/veadotube-websocket-options.png" alt="" width="500"/>
 
 2. Open the SAMMI Bridge
-    - SAMMI > left sidebar > SAMMI Bridge > Open in a Browser
+    - https://sammi.solutions/docs/bridge#howtorunbridge
 3. Extract "VeadotubeWebSocket.sef" from the zip file
 4. Open the SAMMI Bridge extension installer
     - SAMMI > left sidebar > SAMMI Bridge > Install an Extension
