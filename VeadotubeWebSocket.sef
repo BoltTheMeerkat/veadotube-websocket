@@ -58,6 +58,28 @@ SAMMI.extCommand(
         objectName: ['Object Name', 14, '', 1.375]
     }
 );
+// Push a state to the stack the given Veadotube instance
+SAMMI.extCommand(
+    'Veadotube: Push State',
+    3355443,
+    52,
+    {
+        instanceType: ['Instance Type', 19, 'mini', 0.25, ['mini', 'live']],
+        windowTitle: ['Window Title', 14, 'model', 1.375],
+        stateName: ['State Name', 14, 'default', 1.375]
+    }
+);
+// Pop the stack for the given Veadotube instance
+SAMMI.extCommand(
+    'Veadotube: Pop State',
+    3355443,
+    52,
+    {
+        instanceType: ['Instance Type', 19, 'mini', 0.25, ['mini', 'live']],
+        windowTitle: ['Window Title', 14, 'model', 1.375],
+        stateName: ['State Name', 14, 'default', 1.375]
+    }
+);
 // Get the thumbnail of a state for the given Veadotube instance
 SAMMI.extCommand(
     'Veadotube: Get State Thumbnail',
@@ -411,6 +433,18 @@ function vwCommandListener()
         SAMMI.getVariable(`instances[${arrayCount}].current_state`, 'GetVeadotubeInstances').then(response => {
             SAMMI.setVariable(payload.Data.objectName, response["value"], payload.Data.FromButton);
         });
+    });
+
+    sammiclient.on('Veadotube: Push State', (payload) => {
+        console.log("Veadotube WebSocket: Push State triggered. Payload: ", payload);
+        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
+        vwSendMessage(veadotubeInstance, 'nodes', 'stateEvents', {event: 'push', state: veadotubeInstance["states"][vwMatchNameToState(payload.Data.stateName, veadotubeInstance)]["id"]});
+    });
+
+    sammiclient.on('Veadotube: Pop State', (payload) => {
+        console.log("Veadotube WebSocket: Pop State triggered. Payload: ", payload);
+        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
+        vwSendMessage(veadotubeInstance, 'nodes', 'stateEvents', {event: 'pop', state: veadotubeInstance["states"][vwMatchNameToState(payload.Data.stateName, veadotubeInstance)]["id"]});
     });
 
     sammiclient.on('Veadotube: Get State Thumbnail', (payload) => {
