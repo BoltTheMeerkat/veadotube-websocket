@@ -3,7 +3,7 @@ Veadotube WebSocket
 [extension_info]
 An extension to connect SAMMI to Veadotube Mini/Live
 [extension_version]
-1.1.5
+1.2.0
 
 
 
@@ -56,6 +56,40 @@ SAMMI.extCommand(
         instanceType: ['Instance Type', 19, 'mini', 0.25, ['mini', 'live']],
         windowTitle: ['Window Title', 14, 'model', 1.375],
         objectName: ['Object Name', 14, '', 1.375]
+    }
+);
+// Push a state to the stack the given Veadotube instance
+SAMMI.extCommand(
+    'Veadotube: Push State',
+    3355443,
+    52,
+    {
+        instanceType: ['Instance Type', 19, 'mini', 0.25, ['mini', 'live']],
+        windowTitle: ['Window Title', 14, 'model', 1.375],
+        stateName: ['State Name', 14, 'default', 1.375]
+    }
+);
+// Pop the stack for the given Veadotube instance
+SAMMI.extCommand(
+    'Veadotube: Pop State',
+    3355443,
+    52,
+    {
+        instanceType: ['Instance Type', 19, 'mini', 0.25, ['mini', 'live']],
+        windowTitle: ['Window Title', 14, 'model', 1.375],
+        stateName: ['State Name', 14, 'default', 1.375]
+    }
+);
+// Get the thumbnail of a state for the given Veadotube instance
+SAMMI.extCommand(
+    'Veadotube: Get State Thumbnail',
+    4467268,
+    52,
+    {
+        instanceType: ['Instance Type', 19, 'mini', 0.25, ['mini', 'live']],
+        windowTitle: ['Window Title', 14, 'model', 1.25],
+        stateName: ['State Name', 14, 'default', 1.25],
+        objectName: ['Object Name', 14, '', 1.25]
     }
 );
 
@@ -175,8 +209,7 @@ function vwMain()
     vwFindVeadotubeInstances();
 }
 
-// Finds and connects to any currently running Veadotube instances
-// Returns an array of veadotubeInstance objects
+// Gets SAMMI to find any currently running Veadotube instances
 function vwFindVeadotubeInstances()
 {
     // Find the currently running instances of Veadotube
@@ -200,8 +233,11 @@ function vwFindVeadotubeInstances()
         break;
     }
     // SAMMI automatically executes the next part as we have no idea how long it will take SAMMI to find the instances
+    // At one point, an attempt was made to make vwConnectVeadotubeInstances() a recursive function so that it wasn't reliant on SAMMI starting it
+    // It worked fine, except that it caused a new bug in SAMMI, where it would crash getting the extension details for the global extensions variable
 }
 
+// Connects to any Veadotube instances found by SAMMI
 function vwConnectVeadotubeInstances()
 {
     console.log("Veadotube WebSocket: Checking if instances were found...");
@@ -233,6 +269,7 @@ function vwConnectVeadotubeInstances()
                 }
                 globalVeadotubeWebSocket.instances[ii]["websocket"].onmessage = function(message)
                 {
+                    console.log("Veadotube WebSocket: Response received from Veadotube. Response: ", message)
                     // Veadotube websocket messages are in for the format of channel:data
                     // Channel: The channel from where the data originated from (usually the same as where the initial payload was sent to)
                     // Data: The data returned by the channel, the format of which is dependent on the channel (currently always a UTF-8 string)
@@ -281,9 +318,30 @@ function vwConnectVeadotubeInstances()
 
                                             // The currently selected state for an instance was set
                                             case 'set':
-                                                // Update the current state
-                                                // Done in this way to make sure the variable in SAMMI doesn't become desynced with the instance it's referencing
-                                                vwSendMessage(globalVeadotubeWebSocket.instances[arrayCount], 'nodes', 'stateEvents', {event: 'peek'});
+                                                // STUB: Upon setting a state, Veadotube returns a "peek" event
+                                            break;
+
+                                            // The currently selected state for an instance was set
+                                            case 'push':
+                                                // STUB: Upon pushing a state, Veadotube returns a "peek" event
+                                            break;
+
+                                            case 'pop':
+                                                // STUB: Upon popping a state, Veadotube returns a "peek" event
+                                            break;
+
+                                            // The currently selected state for an instance was set
+                                            case 'thumb':
+                                                // Construct the object to be stored in "thumbnail"
+                                                thumbnail = {
+                                                    id: payload.state,
+                                                    name: globalVeadotubeWebSocket.instances[arrayCount]["states"][vwMatchIdToState(payload.state, globalVeadotubeWebSocket.instances[arrayCount])]["name"],
+                                                    width: payload.width,
+                                                    height: payload.height,
+                                                    base64_png: payload.png
+                                                };
+                                                // Add the thumbnail object to SAMMI
+                                                SAMMI.setVariable('thumbnail', thumbnail, 'GetVeadotubeInstances');
                                             break;
                                         }
                                     break;
@@ -375,6 +433,54 @@ function vwCommandListener()
         SAMMI.getVariable(`instances[${arrayCount}].current_state`, 'GetVeadotubeInstances').then(response => {
             SAMMI.setVariable(payload.Data.objectName, response["value"], payload.Data.FromButton);
         });
+    });
+
+    sammiclient.on('Veadotube: Push State', (payload) => {
+        console.log("Veadotube WebSocket: Push State triggered. Payload: ", payload);
+        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
+        vwSendMessage(veadotubeInstance, 'nodes', 'stateEvents', {event: 'push', state: veadotubeInstance["states"][vwMatchNameToState(payload.Data.stateName, veadotubeInstance)]["id"]});
+    });
+
+    sammiclient.on('Veadotube: Pop State', (payload) => {
+        console.log("Veadotube WebSocket: Pop State triggered. Payload: ", payload);
+        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
+        vwSendMessage(veadotubeInstance, 'nodes', 'stateEvents', {event: 'pop', state: veadotubeInstance["states"][vwMatchNameToState(payload.Data.stateName, veadotubeInstance)]["id"]});
+    });
+
+    sammiclient.on('Veadotube: Get State Thumbnail', (payload) => {
+        console.log("Veadotube WebSocket: Get Thumbnail triggered. Payload: ", payload);
+        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
+        vwSendMessage(veadotubeInstance, 'nodes', 'stateEvents', {event: 'thumb', state: veadotubeInstance["states"][vwMatchNameToState(payload.Data.stateName, veadotubeInstance)]["id"]});
+        // It can take a while for Veadotube to return the thumbnail, so a recursive function is needed
+        // It makes 5 attempts, 1 per second, before failing
+        function ThumbnailRecurse(recurseTimeout)
+        {
+            if(recurseTimeout < 5)
+            {
+                console.log("Veadotube WebSocket: Getting thumbnail object (attempt " + (recurseTimeout+1) + " of 5)");
+                SAMMI.getVariable('thumbnail', 'GetVeadotubeInstances').then(response => {
+                    if(response.value != null)
+                    {
+                        console.log("Veadotube WebSocket: Thumbnail object returned!")
+                        // Return the thumbnail object of the state of the given Veadotube instance to the variable the user provided
+                        SAMMI.setVariable(payload.Data.objectName, response["value"], payload.Data.FromButton);
+                        // We don't need to store the thumbnail in the button forever, so delete it
+                        SAMMI.deleteVariable('thumbnail', 'GetVeadotubeInstances');
+                    }
+                    else
+                    {
+                        recurseTimeout++;
+                        setTimeout(ThumbnailRecurse, 1000, recurseTimeout);
+                    }
+                });
+            }
+            else
+            {
+                console.log("Veadotube WebSocket: No thumbnail object was returned.");
+            }
+        }
+        // Start the recursive function
+        ThumbnailRecurse(0);
     });
 
     console.log("Veadotube WebSocket: Done!");
