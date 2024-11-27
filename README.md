@@ -24,9 +24,11 @@ Veadotube WebSocket is an extension for the SAMMI Bridge, and adds a WebSocket c
     - [x] listen/unlisten
         - [x] *Prerequisite: Find out what the token from listening is actually used for, and from that, work out if this is useful to the extension and/or to users*
             - *Not useful to users, but will be required by the back-end with Veadotube v2.1*
-- [ ] Add proper support for types of Veadotube other than Mini (e.g. multiple nodes)
-- [ ] Rework automatic server discovery to allow for manual directory input, in case the Veadotube instances are not hosted locally
+- [x] Add proper support for types of Veadotube other than Mini (e.g. multiple nodes)
+    - *This is theoretically done and ready on the back-end, but has no applicable front-end use-cases yet*
+- [x] Rework automatic server discovery to allow for manual directory input, in case the Veadotube instances are not hosted locally
     - *Note to users: this can already be indirectly done by adjusting the lookup directory in the "Get Veadotube Instances" button*
+    - *Marked as done, because as it turns out, [this doesn't matter!](https://veado.tube/help/docs/data-files/#portable)*
 - [ ] Adjust the "Get State" and "Get State Thumbnail" commands to allow users to put the returned object in any location, instead of just the button it was sent from
 
 
