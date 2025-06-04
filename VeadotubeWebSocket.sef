@@ -163,45 +163,25 @@ function vwSendMessage(veadotubeInstance, channelName, dataType, payloadContent)
 // Matches a given URL to an instance's websocket URL
 function vwMatchURLToInstance(websocketUrl)
 {
-    var count = 0;
-    while(websocketUrl != globalVeadotubeWebSocket.instances[count]["websocket"]["url"])
-    {
-        count++;
-    }
-    return count;
+    return globalVeadotubeWebSocket.instances.findIndex(instance => instance.websocket.url === websocketUrl);
 }
 
 // Matches a given name to an instance's name
 function vwMatchNameToInstance(instanceName)
 {
-    var count = 0;
-    while(instanceName != globalVeadotubeWebSocket.instances[count]["name"])
-    {
-        count++;
-    }
-    return count;
+    return globalVeadotubeWebSocket.instances.findIndex(instance => instance.websocket.name === instanceName);
 }
 
 // Matches a given state name to the state of an instance
 function vwMatchNameToState(stateName, veadotubeInstance)
 {
-    var count = 0;
-    while(stateName != veadotubeInstance.states[count]["name"])
-    {
-        count++;
-    }
-    return count;
+    return veadotubeInstance.states.findIndex(state => state.name === stateName)
 }
 
 // Matches a given state ID to the state of an instance
 function vwMatchIdToState(stateId, veadotubeInstance)
 {
-    var count = 0;
-    while(stateId != veadotubeInstance.states[count]["id"])
-    {
-        count++;
-    }
-    return count;
+    return veadotubeInstance.states.findIndex(state => state.name === stateId)
 }
 
 // Main functon
