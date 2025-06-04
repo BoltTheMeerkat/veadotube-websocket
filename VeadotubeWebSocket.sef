@@ -160,6 +160,23 @@ function vwSendMessage(veadotubeInstance, channelName, dataType, payloadContent)
     veadotubeInstance["websocket"].send(channelName + ':' + JSON.stringify(data));
 }
 
+// Builds the string for instance depending on its type
+function vwBuildInstanceString(type, windowTitle)
+{
+    var instanceString = '';
+    switch(type)
+    {
+        case 'live':
+            instanceString = 'veadotube - ' + windowTitle;
+        break;
+
+        case 'mini':
+            instanceString = 'veadotube mini - ' + windowTitle;
+        break;
+    }
+    return instanceString
+}
+
 // Matches a given URL to an instance's websocket URL
 function vwMatchURLToInstance(websocketUrl)
 {
@@ -417,7 +434,7 @@ function vwCommandListener()
 
     sammiclient.on('Veadotube: Set State', (payload) => {
         console.log("Veadotube WebSocket: Set State triggered. Payload: ", payload);
-        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
+        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance(vwBuildInstanceString(payload.Data.instanceType, payload.Data.windowTitle))];
         // Check if the current state is the same as what is trying to be set
         if(veadotubeInstance["current_state"]["id"] != veadotubeInstance["states"][vwMatchNameToState(payload.Data.stateName, veadotubeInstance)]["id"])
         {
@@ -431,7 +448,7 @@ function vwCommandListener()
 
     sammiclient.on('Veadotube: Get State', (payload) => {
         console.log("Veadotube WebSocket: Get State triggered. Payload: ", payload);
-        var arrayCount = vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle);
+        var arrayCount = vwMatchNameToInstance(vwBuildInstanceString(payload.Data.instanceType, payload.Data.windowTitle));
         // While the current state in Veadotube and the value for it stored in SAMMI should never become desync'd, there is always a possibility
         // Getting the current state from Veadotube here should prevent any sort of desync from occurring
         vwSendMessage(globalVeadotubeWebSocket.instances[arrayCount], 'nodes', 'stateEvents', {event: 'peek'});
@@ -443,19 +460,19 @@ function vwCommandListener()
 
     sammiclient.on('Veadotube: Push State', (payload) => {
         console.log("Veadotube WebSocket: Push State triggered. Payload: ", payload);
-        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
+        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance(vwBuildInstanceString(payload.Data.instanceType, payload.Data.windowTitle))];
         vwSendMessage(veadotubeInstance, 'nodes', 'stateEvents', {event: 'push', state: veadotubeInstance["states"][vwMatchNameToState(payload.Data.stateName, veadotubeInstance)]["id"]});
     });
 
     sammiclient.on('Veadotube: Pop State', (payload) => {
         console.log("Veadotube WebSocket: Pop State triggered. Payload: ", payload);
-        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
+        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance(vwBuildInstanceString(payload.Data.instanceType, payload.Data.windowTitle))];
         vwSendMessage(veadotubeInstance, 'nodes', 'stateEvents', {event: 'pop', state: veadotubeInstance["states"][vwMatchNameToState(payload.Data.stateName, veadotubeInstance)]["id"]});
     });
 
     sammiclient.on('Veadotube: Get State Thumbnail', (payload) => {
         console.log("Veadotube WebSocket: Get Thumbnail triggered. Payload: ", payload);
-        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance('veadotube ' + payload.Data.instanceType + ' - ' + payload.Data.windowTitle)];
+        var veadotubeInstance = globalVeadotubeWebSocket.instances[vwMatchNameToInstance(vwBuildInstanceString(payload.Data.instanceType, payload.Data.windowTitle))];
         vwSendMessage(veadotubeInstance, 'nodes', 'stateEvents', {event: 'thumb', state: veadotubeInstance["states"][vwMatchNameToState(payload.Data.stateName, veadotubeInstance)]["id"]});
         // It can take a while for Veadotube to return the thumbnail, so a recursive function is needed
         // It makes 5 attempts, 1 per second, before failing
